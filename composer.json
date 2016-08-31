@@ -1,0 +1,9 @@
+{
+    "name": "javanile/schedule",
+    "type": "library",
+    "description": "simple php library to create scheduled tasks",
+    "license": "MIT",
+    "authors": [{ "name": "Francesco Bianco", "email": "bianco@javanile.org" }],
+    "autoload": { "psr-0": { "Javanile\\Schedule\\": "src/" } },
+    "require": { "php": "^5.3.6 || >=7.0 <7.2" }
+}
