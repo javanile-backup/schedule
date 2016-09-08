@@ -20,6 +20,12 @@ class Schedule
      * 
      * 
      */
+    private $_debug = 0;
+    
+    /**
+     * 
+     * 
+     */
     private $_time_table = array();
     
     /**
@@ -50,14 +56,8 @@ class Schedule
         $key = md5($bt[0]['line'].':'.$bt[0]['line']);
         
         //
-        $ts = strtotime($moment, $this->_ts);
-        
-        //
-        if (!$this->isTabled($key, $ts)) 
+        if ($this->canRun($key, $moment)) 
         {
-            //
-            $this->setTabled($key, $ts);
-            
             //
             if (is_string($callable) && method_exists($this, $callable)) 
             {
@@ -70,33 +70,113 @@ class Schedule
      * 
      * 
      */
-    private function isTabled($key, $ts) 
+    private function canRun($key, $moment) 
     {
         //
-        echo 'ts:'.$ts.' - its:'.$this->_ts."<BR/>";
-       
+        $period = null;
+             
         //
-        if (isset($this->_time_table[$key]))     
-        {
-            return $ts < $this->_time_table[$key];
-        } 
+        $momentTS = $this->getMomentTS($moment, $period);
         
         //
-        else
+        $actualTS = $this->getActualTS($period);
+  
+        //
+        $latestTS = $this->getLatestTS($key);
+        
+        //
+        if ($this->_debug)
         {
-            return $ts > $this->_ts;
+            echo ' - '.$key.' '.$period
+               . ' m('.$momentTS[0].'-'.$momentTS[1].')'
+               . ' a('.$actualTS[0].'-'.$actualTS[1].')'
+               . ' l('.$latestTS[0].'-'.$latestTS[1].')' 
+               ;
         }
+          
+        //
+        $canRun = $momentTS[0] <= $actualTS[0] 
+               && $momentTS[1] <  $actualTS[1]
+               && $latestTS[0] <  $momentTS[0];
+          
+        //
+        if ($canRun) 
+        {   
+            //
+            $this->_time_table[$key] = $actualTS;
+            
+            //
+            if ($this->_debug) { echo ' RUN '.date('Y-m-d H:i:s', $this->_ts); }
+        }  
+
+        //
+        if ($this->_debug) { echo "\n"; }
+        
+        //
+        return $canRun;
     }
     
     /**
      * 
      * 
      */
-    private function setTabled($key) 
+    private function getMomentTS($moment, &$period)
     {
         //
-        $this->_time_table[$key] = $this->_ts;
+        $x = null;
+        
+        //
+        if (preg_match('/[0-9][0-9]:[0-9][0-9]/', $moment, $x))
+        {
+            //
+            $t = strtotime($moment, $this->_ts); 
+            
+            //
+            $p = 3600 * 24;
+            
+            //
+            $d = (int) ($t / $p);
+            
+            //
+            $i = $t % $p;
+             
+            //
+            $period = $p;
+            
+            //
+            return array($d, $i);
+        }
+        
+        //
+        die("Error moment parsing: ".$moment);
     }
+    
+    /**
+     * 
+     * 
+     */
+    private function getActualTS($p)
+    {
+        $d = (int) ($this->_ts / $p);
+        
+        $i = $this->_ts % $p;
+                
+        return array($d, $i);
+    }
+    
+    /**
+     * 
+     * 
+     * 
+     */
+    private function getLatestTS($key)
+    {
+        //
+        return isset($this->_time_table[$key])
+             ? $this->_time_table[$key]
+             : array(0, 0);
+    }
+    
     
     /**
      * 
@@ -106,6 +186,16 @@ class Schedule
     {
         //
         $this->_ts = $ts;
+    }
+
+    /**
+     * 
+     * 
+     */
+    public function debug($flag) 
+    {
+        //
+        $this->_debug = $flag;
     }
 
     /**
@@ -150,6 +240,22 @@ class Schedule
      * 
      * 
      */
+    public function reset() 
+    {
+        //
+        $this->prepare();
+        
+        //
+        $this->_time_table = array();
+        
+        //
+        @unlink($this->_time_table_file);
+    }
+    
+    /**
+     * 
+     * 
+     */
     public function info()
     {
         echo '<pre>';
@@ -177,7 +283,7 @@ class Schedule
         $task->dispose();
         
         //
-        $task->info();
+        //$task->info();
     }
     
     /**
@@ -191,10 +297,10 @@ class Schedule
         $ts = strtotime($moment);
         
         //
-        echo 'testat: '. date('H:i:s d/m/Y', $ts)."<br/>";
+        $task->ts($ts);
         
         //
-        $task->ts($ts);
+        $task->debug(1);
         
         //
         $task->prepare();
@@ -206,7 +312,7 @@ class Schedule
         $task->dispose();
         
         //
-        $task->info();      
+        //$task->info();      
     }
 }
 
